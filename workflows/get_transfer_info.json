@@ -1,0 +1,144 @@
+{
+  "name": "get_transfer_info",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "get-transfer-info",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a3201d08-184d-4157-be6b-59736ad9614a",
+      "name": "Webhook",
+      "webhookId": "b1882a0c-102c-4186-95ee-69c554f24aed"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_TRANSFER_TARGETS_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "transfer_targets"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$json.query.phone}}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0ddac013-df15-442d-98b4-e86a908430dc",
+      "name": "Get Transfer Row"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\n\nif (!rows.length) {\n  return [{\n    json: {\n      text: 'NONE|||'\n    }\n  }];\n}\n\nconst row = rows[0].json;\n\nconst clientType = row.clientType || 'UNKNOWN';\nconst assignedExt = row.assignedExt || '';\nconst secondaryExt = row.secondaryExt || '';\nconst fallbackExts = row.fallbackExts || '';\n\nif (clientType !== 'COMPANY') {\n  return [{\n    json: {\n      text: `${clientType}|||`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    text: `${clientType}|${assignedExt}|${secondaryExt}|${fallbackExts}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "b6e5b8f1-3d1c-4c7f-85e2-5ae71aadded1",
+      "name": "Build Transfer Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.text}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        832,
+        0
+      ],
+      "id": "e708f689-1f4b-4e3d-b125-2c1d45d88261",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.query.phone || '');\n\nconst digits = raw.replace(/\\D/g, '');\n\nlet phoneWithoutPlus = digits;\n\nif (phoneWithoutPlus.length === 11 && phoneWithoutPlus.startsWith('8')) {\n  phoneWithoutPlus = '7' + phoneWithoutPlus.slice(1);\n}\n\nconst phoneWithPlus = '+' + phoneWithoutPlus;\n\nreturn [{\n  json: {\n    ...$json,\n    query: {\n      ...$json.query,\n      phoneRaw: raw,\n      phone: phoneWithPlus,\n      phoneWithoutPlus\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "766246d8-7fca-4b7a-8dea-6e0e9afa277f",
+      "name": "Normalize Phone"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Transfer Row": {
+      "main": [
+        [
+          {
+            "node": "Build Transfer Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Transfer Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Phone": {
+      "main": [
+        [
+          {
+            "node": "Get Transfer Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

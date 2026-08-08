@@ -1,0 +1,429 @@
+{
+  "name": "voice_dialog_name",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-dialog-name",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1056,
+        64
+      ],
+      "id": "dc862595-171a-4ebc-8253-296b64c63793",
+      "name": "Webhook",
+      "webhookId": "566ef855-192a-40a5-a6bb-f834b2bd59a9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f717007-b084-4725-96d6-ea5f37d67508",
+              "name": "phone",
+              "value": "={{'+7' + $json.body.phone.replace(/\\D/g, '').slice(-10)}}",
+              "type": "string"
+            },
+            {
+              "id": "b267ac36-3cbd-484a-a5f7-b295455b4099",
+              "name": "userText",
+              "value": "={{$json.body.userText || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "bd43bb92-2b1b-49a1-afed-a653c865ecf9",
+              "name": "source",
+              "value": "={{$json.body.source || 'telephony_sip'}}",
+              "type": "string"
+            },
+            {
+              "id": "76559ac5-7c47-4b00-860b-774454a3fac1",
+              "name": "event",
+              "value": "={{$json.body.event || 'message'}}",
+              "type": "string"
+            },
+            {
+              "id": "1715973c-70bb-40a4-b5d8-592b0f25d92e",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "99314f69-c599-4d64-83a2-9e85c39b620d",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        64
+      ],
+      "id": "a7a25c48-c57e-409b-9499-aa421bcb44b0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"modelUri\": \"gpt://{{$('Edit Fields').first().json.ID_CAT}}/yandexgpt-lite\",\n  \"completionOptions\": {\n    \"stream\": false,\n    \"temperature\": 0,\n    \"maxTokens\": 150\n  },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"text\": \"Извлеки имя клиента из текста. Верни только валидный JSON: {\\\"clientName\\\":\\\"string|null\\\"}. Если имени нет, верни {\\\"clientName\\\":null}.\"\n    },\n    {\n      \"role\": \"user\",\n      \"text\": \"Ответ клиента: {{$('Edit Fields').first().json.userText}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -416,
+        64
+      ],
+      "id": "5ea09c52-79fd-4871-9f6e-144b0ad76996",
+      "name": "Extract Name"
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.result?.alternatives?.[0]?.message?.text || '';\nraw = raw.trim();\n\nlet clientName = null;\n\ntry {\n  raw = raw\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```/, '')\n    .replace(/```$/i, '')\n    .trim();\n\n  const start = raw.indexOf('{');\n  const end = raw.lastIndexOf('}');\n\n  if (start !== -1 && end !== -1) {\n    const parsed = JSON.parse(raw.slice(start, end + 1));\n    clientName = parsed.clientName || null;\n  }\n} catch (e) {\n  clientName = null;\n}\n\nif (!clientName) {\n  clientName = String($('Edit Fields').first().json.userText || '')\n    .replace(/^(меня зовут|я|это|алло|здравствуйте|добрый день|добрый вечер)\\s+/i, '')\n    .trim();\n}\n\nif (!clientName || clientName.length < 2) {\n  clientName = 'Клиент';\n}\n\nreturn [\n  {\n    json: {\n      phone: $('Edit Fields').first().json.phone,\n      clientName,\n      userText: $('Edit Fields').first().json.userText\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        64
+      ],
+      "id": "fe9bd733-8ddf-4adf-a996-7d44654cb0a6",
+      "name": "Parse Name"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$json.phone}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "step": "waiting_client_type",
+            "clientName": "={{$json.clientName}}",
+            "transcriptFull": "={{ 'Робот: Здравствуйте, компания СБВ утилизация, как я могу к вам обращаться?\\nКлиент: ' + $json.clientName + '\\nРобот: Подскажите, вы физическое или юридическое лицо?' }}\n",
+            "attempts": "0"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clientName",
+              "displayName": "clientName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clientType",
+              "displayName": "clientType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "transcriptFull",
+              "displayName": "transcriptFull",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "attempts",
+              "displayName": "attempts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        64
+      ],
+      "id": "0de54f26-3f52-44a5-aa82-209cffcc2687",
+      "name": "Update Dialog After Name"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"replyText\": \"Подскажите, вы физическое или юридическое лицо?\",\n  \"step\": \"waiting_client_type\",\n  \"isCompleted\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        208,
+        64
+      ],
+      "id": "a629ef6d-b135-4bff-9bf2-b3f6ac797689",
+      "name": "Respond Ask Client Type"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{$('Edit Fields').first().json.phone}}",
+            "step": "waiting_name",
+            "source": "={{$('Edit Fields').first().json.source}}",
+            "attempts": "0",
+            "transcriptFull": "={{'Ответ на имя: ' + $('Edit Fields').first().json.userText}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clientName",
+              "displayName": "clientName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "clientType",
+              "displayName": "clientType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "transcriptFull",
+              "displayName": "transcriptFull",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "attempts",
+              "displayName": "attempts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        64
+      ],
+      "id": "79ae4d19-37fc-413e-a9dc-e4f0070c1a83",
+      "name": "Insert Dialog Row"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Insert Dialog Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Name": {
+      "main": [
+        [
+          {
+            "node": "Parse Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Name": {
+      "main": [
+        [
+          {
+            "node": "Update Dialog After Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Dialog After Name": {
+      "main": [
+        [
+          {
+            "node": "Respond Ask Client Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Dialog Row": {
+      "main": [
+        [
+          {
+            "node": "Extract Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

@@ -1,0 +1,488 @@
+{
+  "name": "stt_test_city",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stt-test-city",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5e8755d0-8b94-43bd-b1e9-0d20587a40c8",
+      "name": "Webhook",
+      "webhookId": "1181a7f9-4551-48aa-9168-1b436fb66a68"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cbaff0cd-07b4-4139-8b90-968715dd75ac",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "67f6b737-84d0-4ab0-8637-8d01d5e3a1cf",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            },
+            {
+              "id": "343cd158-a49d-4b8b-8c7b-436c89073387",
+              "name": "lang",
+              "value": "ru-RU",
+              "type": "string"
+            },
+            {
+              "id": "04ee2ba8-0a6b-42d7-a638-38f48ea79735",
+              "name": "topic",
+              "value": "general",
+              "type": "string"
+            },
+            {
+              "id": "6bb32519-61e3-4d1e-b40b-ad32a5c159fd",
+              "name": "format",
+              "value": "lpcm",
+              "type": "string"
+            },
+            {
+              "id": "309cab37-5a49-4d88-b2c5-c9d832228724",
+              "name": "sampleRateHertz",
+              "value": "8000",
+              "type": "string"
+            },
+            {
+              "id": "401d0c82-a5af-4fba-b6fe-5f7366c940a5",
+              "name": "=phone",
+              "value": "{{$json.body.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "0b821268-3161-451e-86d8-2467660aff6a",
+              "name": "source",
+              "value": "telephony_sip",
+              "type": "string"
+            },
+            {
+              "id": "f4310702-9eb8-4bc0-91d0-06c3beb62300",
+              "name": "event",
+              "value": "message",
+              "type": "string"
+            },
+            {
+              "id": "0bd0c986-893f-4932-b8de-024b89ce6540",
+              "name": "stage",
+              "value": "={{$json.body.stage || ''}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "922f664f-d921-4fa7-9df9-a47e79e3e7d4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "cb452a5a-45ec-429b-be73-db34c302ec6e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.replyText}}"
+            },
+            {
+              "name": "lang",
+              "value": "ru-RU"
+            },
+            {
+              "name": "voice",
+              "value": "jane"
+            },
+            {
+              "name": "format",
+              "value": "lpcm"
+            },
+            {
+              "name": "sampleRateHertz",
+              "value": "8000"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        464
+      ],
+      "id": "7e21bb0d-1245-4e3a-9074-cfd49b811d50",
+      "name": "Yandex TTS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://stt.api.cloud.yandex.net/speech/v1/stt:recognize",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "lang",
+              "value": "={{$('Edit Fields').first().json.lang}}"
+            },
+            {
+              "name": "topic",
+              "value": "={{$('Edit Fields').first().json.topic}}"
+            },
+            {
+              "name": "format",
+              "value": "={{$('Edit Fields').first().json.format}}"
+            },
+            {
+              "name": "sampleRateHertz",
+              "value": "={{$('Edit Fields').first().json.sampleRateHertz}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "audio/x-pcm"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        432,
+        0
+      ],
+      "id": "1ce070f5-9724-4250-a2b0-2f6006486a92",
+      "name": "Yandex STT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook').first().json.body || {};\nconst rawPhone = body.phone || '';\nconst digits = String(rawPhone).replace(/\\D/g, '');\nconst phone = digits ? '+7' + digits.slice(-10) : '';\n\nif (!phone) {\n  throw new Error('Не пришёл phone из Asterisk. body=' + JSON.stringify(body));\n}\n\nreturn [\n  {\n    json: {\n      phone,\n      userText: $json.result || $json.text || '',\n      stage: body.stage || '',\n      source: 'telephony_sip',\n      event: 'message',\n      raw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "8a41b8f4-07a9-4583-95ab-78bc2e4a0404",
+      "name": "Parse STT Result"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/voice-dialog-city",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$('Parse STT Result').first().json.phone}}"
+            },
+            {
+              "name": "userText",
+              "value": "={{$('Parse STT Result').first().json.userText}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$('Parse STT Result').first().json.source}}"
+            },
+            {
+              "name": "event",
+              "value": "={{$('Parse STT Result').first().json.event}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        0
+      ],
+      "id": "9fe41f1d-5ddd-48b8-937f-e990ca6593b5",
+      "name": "Send To Voice"
+    },
+    {
+      "parameters": {
+        "jsCode": "const replyText = $json.replyText || '';\n\nreturn [\n  {\n    json: {\n      phone: $json.phone || '',\n      replyText,\n      useThankOk: replyText === '__THANK_OK__',\n      useThankNotOk: replyText === '__THANK_NOT_OK__',\n      isCompleted: $json.isCompleted ?? false,\n      userText: $('Parse STT Result').first().json.userText || '',\n      raw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "9aed44c0-211c-4cf1-8034-4aa904c5ed98",
+      "name": "Parse Gateway Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "875cfe13-89f0-4991-bd59-940eb61be470",
+              "leftValue": "={{ $json.useThankNotOk }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1296,
+        0
+      ],
+      "id": "8e1c1f4a-5543-428b-b0ef-73ffa8b9ed3b",
+      "name": "IF Thank Not Ok"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/thankNotOk.pcm",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1504,
+        -96
+      ],
+      "id": "6f8b9f0a-49c2-401f-995c-8e34815c6e76",
+      "name": "Read thankNotOk"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/thankOk.pcm",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1504,
+        96
+      ],
+      "id": "2b21f636-129a-4c35-b86b-0b293cd2c008",
+      "name": "Read thankOk"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Yandex STT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yandex TTS": {
+      "main": [
+        []
+      ]
+    },
+    "Yandex STT": {
+      "main": [
+        [
+          {
+            "node": "Parse STT Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse STT Result": {
+      "main": [
+        [
+          {
+            "node": "Send To Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To Voice": {
+      "main": [
+        [
+          {
+            "node": "Parse Gateway Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gateway Response": {
+      "main": [
+        [
+          {
+            "node": "IF Thank Not Ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Thank Not Ok": {
+      "main": [
+        [
+          {
+            "node": "Read thankNotOk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read thankOk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read thankOk": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read thankNotOk": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

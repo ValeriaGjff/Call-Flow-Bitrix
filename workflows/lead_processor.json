@@ -1,0 +1,1208 @@
+{
+  "name": "lead_processor",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "53ae7c1c-027a-4a54-a8c6-7122570ab203",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "2f45fe9c-4af9-408c-ab55-08589cace46e",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            },
+            {
+              "id": "152f057e-04cb-4e5b-aa95-85a58b6406cd",
+              "name": "phone",
+              "value": "={{$json.body.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "4f0a27cb-718a-49da-a3ea-cc7d85b1c6a1",
+              "name": "clientName",
+              "value": "={{$json.body.clientName || 'Клиент'}}",
+              "type": "string"
+            },
+            {
+              "id": "38411947-e4c6-4e00-9fb7-1265882812cb",
+              "name": "clientType",
+              "value": "={{$json.body.clientType || 'UNKNOWN'}}",
+              "type": "string"
+            },
+            {
+              "id": "3c2e4789-12e7-41d6-bc0f-355189bd2aa0",
+              "name": "city",
+              "value": "={{$json.body.city || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "a0a43a83-e4dd-44e3-9793-c171df03660d",
+              "name": "transcript",
+              "value": "={{$json.body.transcript || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "493cc9e3-d52e-4da5-8cdf-fb074cc3845f",
+              "name": "source",
+              "value": "={{$json.body.source || 'telephony_sip'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1632,
+        16
+      ],
+      "id": "56fb13c5-ab7b-4f46-a683-e3bf6b2dade1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.lead.update.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{$('Duplicate Check').first().json.result.LEAD[0]}}"
+            },
+            {
+              "name": "fields[COMMENTS]",
+              "value": "=Повторный звонок через голосового ассистента.  \n\nИмя: {{$('Parse Lead Data').first().json.clientName}}\n\nТип клиента: {{\n$('Parse Lead Data').first().json.clientType === 'PERSON'\n? 'Физическое лицо'\n: 'Юридическое лицо'\n}}\n\nГород: {{$('Parse Lead Data').first().json.city}}\n\nТранскрипт разговора:\n\n{{$('Parse Lead Data').first().json.transcriptFull}}"
+            },
+            {
+              "name": "fields[ASSIGNED_BY_ID]",
+              "value": "={{Number($('Decide Responsible').first().json.finalAssignedById)}}"
+            },
+            {
+              "name": "fields[STATUS_ID]",
+              "value": "={{$env.BITRIX_LEAD_STATUS_ID}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        0
+      ],
+      "id": "f6a94fc3-d370-4c2f-8208-94ab0ee8e2bc",
+      "name": "Update Existing",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/tasks.task.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields[TITLE]",
+              "value": "=Перезвонить клиенту {{$('Parse Lead Data').first().json.phone}}\n"
+            },
+            {
+              "name": "fields[DESCRIPTION]",
+              "value": "=Голосовой ассистент\n\nИмя: {{$('Parse Lead Data').first().json.clientName}}\nТип клиента: {{$('Parse Lead Data').first().json.clientType === 'PERSON' ? 'Физическое лицо' : 'Юридическое лицо'}}\nГород: {{$('Parse Lead Data').first().json.city}}\n\nТранскрипт разговора:\n\n{{$('Parse Lead Data').first().json.transcript}}"
+            },
+            {
+              "name": "fields[RESPONSIBLE_ID]",
+              "value": "={{Number($('Decide Responsible').first().json.finalAssignedById)}}"
+            },
+            {
+              "name": "fields[CREATED_BY]",
+              "value": "={{$env.BITRIX_CREATED_BY_ID}}"
+            },
+            {
+              "name": "fields[UF_CRM_TASK][0]",
+              "value": "=L_{{$('Duplicate Check').first().json.result.LEAD[0]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1648,
+        96
+      ],
+      "id": "56065f2d-cc00-4aa5-9527-492771e9ce9b",
+      "name": "Create Callback Task",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-bot",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1840,
+        16
+      ],
+      "id": "ed347eca-7f7b-43ba-b825-1c94a8fb929b",
+      "name": "Webhook",
+      "webhookId": "ff8df24a-90e5-45b8-8b98-4e5afff51a34"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.duplicate.findbycomm.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"PHONE\",\n  \"values\": [\n    \"{{$('Route Responsible').first().json.phone}}\",\n    \"{{$('Route Responsible').first().json.phone.replace(/\\\\D/g, '')}}\",\n    \"{{'+' + $('Route Responsible').first().json.phone.replace(/\\\\D/g, '').replace(/^8/, '7')}}\"\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -768,
+        16
+      ],
+      "id": "32449d35-f768-4034-b202-6a02f095911c",
+      "name": "Duplicate Check",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.timeline.comment.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields[ENTITY_ID]",
+              "value": "={{$('Build Timeline Comment1').first().json.entityId}}"
+            },
+            {
+              "name": "fields[ENTITY_TYPE]",
+              "value": "lead"
+            },
+            {
+              "name": "fields[COMMENT]",
+              "value": "={{$('Build Timeline Comment1').first().json.comment}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        0
+      ],
+      "id": "c8788c4a-f11d-4f18-bc46-bae2943fb60a",
+      "name": "Add Timeline Comment",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.lead.add.json\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields[TITLE]",
+              "value": "={{$('Parse Lead Data').first().json.phone}} - Входящий звонок"
+            },
+            {
+              "name": "fields[NAME]",
+              "value": "={{$('Parse Lead Data').first().json.clientName}}"
+            },
+            {
+              "name": "fields[COMMENTS]",
+              "value": "=Создано голосовым ассистентом.\n\nИмя: {{$('Parse Lead Data').first().json.clientName}}\n\nТип клиента: {{\n$('Parse Lead Data').first().json.clientType === 'PERSON'\n? 'Физическое лицо'\n: 'Юридическое лицо'\n}}\n\nГород: {{$('Parse Lead Data').first().json.city}}\n\nТранскрипт разговора:\n\n{{$('Parse Lead Data').first().json.transcriptFull}}"
+            },
+            {
+              "name": "fields[PHONE][0][VALUE]",
+              "value": "={{$('Parse Lead Data').first().json.phone}}"
+            },
+            {
+              "name": "fields[PHONE][0][VALUE_TYPE]",
+              "value": "WORK"
+            },
+            {
+              "name": "fields[ASSIGNED_BY_ID]",
+              "value": "={{Number($('Route Responsible').first().json.assignedById)}}"
+            },
+            {
+              "name": "fields[STATUS_ID]",
+              "value": "={{$env.BITRIX_LEAD_STATUS_ID}}"
+            },
+            {
+              "name": "fields[SOURCE_ID]",
+              "value": "CALL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        288
+      ],
+      "id": "594036a8-ec47-47a1-9a4f-a7f46ce1f426",
+      "name": "Create Lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.timeline.comment.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields[ENTITY_ID]",
+              "value": "={{$('Build Timeline Comment').first().json.entityId}}"
+            },
+            {
+              "name": "fields[ENTITY_TYPE]",
+              "value": "lead"
+            },
+            {
+              "name": "fields[COMMENT]",
+              "value": "={{$('Build Timeline Comment').first().json.comment}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1024,
+        288
+      ],
+      "id": "47f47aa2-eb65-4ae8-9a4c-fe625aa54df6",
+      "name": "Add Timeline Comment New Lead",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $('Edit Fields').first().json.phone || '';\nconst clientName = $('Edit Fields').first().json.clientName || 'Клиент';\n\nlet clientType = $('Edit Fields').first().json.clientType || 'UNKNOWN';\n\nif (!clientType || clientType === 'UNKNOWN' || clientType === 'null' || clientType === 'undefined') {\n  clientType = 'PERSON';\n}\n\nconst city = $('Edit Fields').first().json.city || '';\nconst transcript = $('Edit Fields').first().json.transcript || '';\nconst source = $('Edit Fields').first().json.source || 'telephony_sip';\n\nconst summaryParts = [];\n\nif (clientName) summaryParts.push(`Имя: ${clientName}`);\nif (clientType) summaryParts.push(`Тип клиента: ${clientType}`);\nif (city) summaryParts.push(`Город: ${city}`);\n\nreturn [\n  {\n    json: {\n      phone,\n      clientName,\n      clientType,\n      city,\n      transcript,\n      source,\n      needCallback: true,\n      summary: summaryParts.join('\\n')\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        16
+      ],
+      "id": "e984d7b3-923c-476d-944b-f11854ad8b23",
+      "name": "Parse Lead Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "17a9e363-e0a5-4fb8-a3d7-362302dd2b10",
+              "leftValue": "={{$json.result.LEAD[0].toString()}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -512,
+        16
+      ],
+      "id": "98e4194f-f30a-4448-9bd8-a045bb182a5e",
+      "name": "If Lead Exists"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/tasks.task.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields[TITLE]",
+              "value": "=Перезвонить клиенту {{$('Parse Lead Data').first().json.phone}}"
+            },
+            {
+              "name": "fields[DESCRIPTION]",
+              "value": "=Голосовой ассистент\n\nИмя: {{$('Parse Lead Data').first().json.clientName}}\nТип клиента: {{$('Parse Lead Data').first().json.clientType === 'PERSON' ? 'Физическое лицо' : 'Юридическое лицо'}}\nГород: {{$('Parse Lead Data').first().json.city}}\n\nТранскрипт разговора:\n\n{{$('Parse Lead Data').first().json.transcript}}"
+            },
+            {
+              "name": "fields[RESPONSIBLE_ID]",
+              "value": "={{$('Route Responsible').first().json.assignedById}}"
+            },
+            {
+              "name": "fields[CREATED_BY]",
+              "value": "={{$env.BITRIX_CREATED_BY_ID}}"
+            },
+            {
+              "name": "fields[UF_CRM_TASK][0]",
+              "value": "=L_{{$('Create Lead').first().json.result}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1584,
+        272
+      ],
+      "id": "a61e6d27-c2a8-4096-b195-7dbed8d54e4f",
+      "name": "Create Callback New Lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Lead Data').first().json;\n\nconst typeText = data.clientType === 'COMPANY'\n  ? 'Юридическое лицо'\n  : 'Физическое лицо';\n\nreturn [\n  {\n    json: {\n      entityId: $('Create Lead').first().json.result,\n      comment:\n`Голосовой ассистент\n\nИмя: ${data.clientName || 'Не указано'}\nТип клиента: ${typeText}\nГород: ${data.city || 'Не указан'}\n\nТранскрипт разговора:\n\n${data.transcript || ''}`\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        288
+      ],
+      "id": "87dffd56-3140-43a5-94a2-1bc69a339bf5",
+      "name": "Build Timeline Comment"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Lead Data').first().json;\n\nconst typeText = data.clientType === 'COMPANY'\n  ? 'Юридическое лицо'\n  : 'Физическое лицо';\n\nreturn [\n  {\n    json: {\n      entityId: $('Duplicate Check').first().json.result.LEAD[0],\n      comment:\n`Голосовой ассистент\n\nИмя: ${data.clientName || 'Не указано'}\nТип клиента: ${typeText}\nГород: ${data.city || 'Не указан'}\n\nТранскрипт разговора:\n\n${data.transcript || ''}`\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        0
+      ],
+      "id": "e7ad69b3-ccf1-4b1f-965b-7366ce01ed57",
+      "name": "Build Timeline Comment1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Lead Data').first().json;\nconst dutyData = $('Get row(s)').first().json;\n\n// Demo configuration.\n// Replace this with your own CRM users or load the same structure from a config/Data Table.\nconst B2C_MANAGER = { id: 103, name: 'Manager C', ext: '203' };\n\nconst MANAGERS = [\n  { id: 101, name: 'Manager A', ext: '201' },\n  { id: 102, name: 'Manager B', ext: '202' },\n  { id: 104, name: 'Manager D', ext: '204' },\n  { id: 105, name: 'Manager E', ext: '205' }\n];\n\nlet dutyTurn = String(dutyData.value || '1');\nconst TIME_ZONE = 'UTC';\n\nfunction localDateKey() {\n  return new Intl.DateTimeFormat('en-CA', {\n    timeZone: TIME_ZONE,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit'\n  }).format(new Date());\n}\n\n// Deterministic demo rotation. Production deployments can replace this\n// with a calendar, database table or workforce-management API.\nconst dutyDate = localDateKey();\nconst dayNumber = Math.floor(new Date(`${dutyDate}T12:00:00Z`).getTime() / 86400000);\nconst primaryIndex = Math.abs(dayNumber) % MANAGERS.length;\nconst secondaryIndex = (primaryIndex + 1) % MANAGERS.length;\n\nconst primaryCandidate = MANAGERS[primaryIndex];\nconst secondaryCandidate = MANAGERS[secondaryIndex];\n\nlet assignedById;\nlet assignedByName;\nlet nextDutyTurn = dutyTurn;\nlet assignedExt = '';\nlet secondaryExt = '';\nlet fallbackExts = '';\n\nif (data.clientType === 'COMPANY') {\n  const primaryManager = dutyTurn === '1' ? primaryCandidate : secondaryCandidate;\n  const secondaryManager = dutyTurn === '1' ? secondaryCandidate : primaryCandidate;\n\n  assignedById = primaryManager.id;\n  assignedByName = primaryManager.name;\n  assignedExt = primaryManager.ext;\n  secondaryExt = secondaryManager.ext;\n\n  fallbackExts = MANAGERS\n    .map(manager => manager.ext)\n    .filter(ext => ext !== assignedExt && ext !== secondaryExt)\n    .join('&');\n\n  nextDutyTurn = dutyTurn === '1' ? '2' : '1';\n} else {\n  assignedById = B2C_MANAGER.id;\n  assignedByName = B2C_MANAGER.name;\n  assignedExt = B2C_MANAGER.ext;\n}\n\nreturn [{\n  json: {\n    ...data,\n    assignedById,\n    assignedByName,\n    assignedExt,\n    secondaryExt,\n    fallbackExts,\n    nextDutyTurn,\n    isCompany: data.clientType === 'COMPANY',\n    dutyDate\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        16
+      ],
+      "id": "5a753ec9-12f7-4e49-bf6a-8e0108fa2367",
+      "name": "Route Responsible"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_LEAD_DUTY_QUEUE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "lead_duty_queue"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "keyValue": "duty_turn"
+            }
+          ]
+        },
+        "limit": 1,
+        "orderBy": true,
+        "orderByColumn": "updatedAt"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1216,
+        16
+      ],
+      "id": "6362af50-8306-494c-ac14-c8dbb64d7d60",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_LEAD_DUTY_QUEUE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "lead_duty_queue"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "keyValue": "duty_turn"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "value": "={{$('Route Responsible').first().json.nextDutyTurn}}",
+            "key": "duty_turn"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "key",
+              "displayName": "key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2112,
+        16
+      ],
+      "id": "bb3ffdf9-3ea4-4f9c-bbca-5a8fd968c829",
+      "name": "Update row(s)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.lead.get.json",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{$('Duplicate Check').first().json.result.LEAD[0]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        0
+      ],
+      "id": "a1366351-7d5d-49f0-b539-3e28bde1f27b",
+      "name": "Get Existing Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const route = $('Route Responsible').first().json;\nconst existingLead = $('Get Existing Lead').first().json.result || null;\n\n// Demo CRM users. Replace with your own active-user lookup/configuration.\nconst ACTIVE_USER_IDS = [101, 102, 103, 104, 105];\n\nconst USER_NAMES = {\n  101: 'Manager A',\n  102: 'Manager B',\n  103: 'Manager C',\n  104: 'Manager D',\n  105: 'Manager E'\n};\n\nconst EXTENSIONS = {\n  101: '201',\n  102: '202',\n  103: '203',\n  104: '204',\n  105: '205'\n};\n\nconst B2C_MANAGER_ID = 103;\nconst B2C_MANAGER_NAME = 'Manager C';\n\nfunction buildResult(\n  finalAssignedById,\n  finalAssignedByName,\n  shouldUpdateDutyTurn,\n  keepExistingResponsible,\n  leadMode,\n  existingLeadAgeSeconds\n) {\n  const responsibleId = Number(finalAssignedById);\n\n  let finalAssignedExt = '';\n\n  if (EXTENSIONS[responsibleId]) {\n    finalAssignedExt = EXTENSIONS[responsibleId];\n  } else if (responsibleId === Number(route.assignedById)) {\n    finalAssignedExt = route.assignedExt || '';\n  }\n\n  return [{\n    json: {\n      ...route,\n      finalAssignedById: responsibleId,\n      finalAssignedByName,\n      finalAssignedExt,\n      shouldUpdateDutyTurn,\n      keepExistingResponsible,\n      leadMode,\n      existingLeadAgeSeconds\n    }\n  }];\n}\n\nif (!existingLead) {\n  return buildResult(\n    route.assignedById,\n    route.assignedByName || `ID ${route.assignedById}`,\n    route.isCompany,\n    false,\n    'NO_EXISTING_LEAD_CREATE_NEW',\n    null\n  );\n}\n\n// B2C callers are routed to the configured B2C manager.\nif (route.clientType === 'PERSON') {\n  return buildResult(\n    B2C_MANAGER_ID,\n    B2C_MANAGER_NAME,\n    false,\n    false,\n    'PERSON_TO_B2C_MANAGER',\n    null\n  );\n}\n\nconst currentResponsibleId = Number(existingLead.ASSIGNED_BY_ID);\nconst isActiveUser = ACTIVE_USER_IDS.includes(currentResponsibleId);\n\nconst createdRaw = existingLead.DATE_CREATE || '';\nconst createdAt = createdRaw ? new Date(createdRaw).getTime() : 0;\nconst ageSeconds = createdAt ? (Date.now() - createdAt) / 1000 : 999999;\n\n// A very fresh CRM record may have just been created by another automation.\n// Keep the routing decision generated for this call.\nif (ageSeconds <= 60) {\n  return buildResult(\n    route.assignedById,\n    route.assignedByName || `ID ${route.assignedById}`,\n    route.isCompany,\n    false,\n    'FRESH_CRM_LEAD_ASSIGN_BY_ROUTER',\n    Math.round(ageSeconds)\n  );\n}\n\n// Existing lead with an active owner keeps its owner.\nif (isActiveUser) {\n  return buildResult(\n    currentResponsibleId,\n    USER_NAMES[currentResponsibleId] || `Current manager ID ${currentResponsibleId}`,\n    false,\n    true,\n    'OLD_ACTIVE_LEAD_KEEP_RESPONSIBLE',\n    Math.round(ageSeconds)\n  );\n}\n\n// Existing lead with an inactive/unknown owner is reassigned by the router.\nreturn buildResult(\n  route.assignedById,\n  route.assignedByName || `ID ${route.assignedById}`,\n  route.isCompany,\n  false,\n  'OLD_INACTIVE_OR_UNKNOWN_ASSIGN_BY_ROUTER',\n  Math.round(ageSeconds)\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4ba0de9f-eb19-48b6-9d52-78aa8a95b821",
+      "name": "Decide Responsible"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e2c19316-b6f4-420c-a859-ab8c7836a811",
+              "leftValue": "={{ String($('Decide Responsible').first().json.shouldUpdateDutyTurn) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        -64
+      ],
+      "id": "ed76eb0b-e324-4077-bf8d-f2327a21604a",
+      "name": "IF Existing Should Update Queue"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f16d2e2e-3488-4cab-a772-0c32b8fb160f",
+              "leftValue": "={{ String($('Route Responsible').first().json.isCompany) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        288
+      ],
+      "id": "bb8e942f-c745-4455-91b6-dd00b0c8ec53",
+      "name": "IF New Lead Is Company"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/crm.lead.update.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": {{$('Create Lead').first().json.result}},\n  \"fields\": {\n    \"ASSIGNED_BY_ID\": {{Number($('Route Responsible').first().json.assignedById)}}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        288
+      ],
+      "id": "cb44492e-bb8a-4396-aca6-1af30d98d788",
+      "name": "Update New Lead Responsible",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/im.message.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"DIALOG_ID\": \"{{$env.BITRIX_CHAT_ID}}\",\n  \"MESSAGE\": \"Новый лид\\n\\nКлиент: {{$('Parse Lead Data').first().json.clientName}}\\nТелефон: {{$('Parse Lead Data').first().json.phone}}\\nТип клиента: {{$('Parse Lead Data').first().json.clientType === 'COMPANY' ? 'Юридическое лицо' : 'Физическое лицо'}}\\nОтветственный: {{$('Route Responsible').first().json.assignedByName}}\\nСсылка: {{$env.BITRIX_PORTAL_URL}}/crm/lead/details/{{$('Create Lead').first().json.result}}/\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1840,
+        272
+      ],
+      "id": "04ffeb3c-d033-4c20-931a-160d36cfa780",
+      "name": "Send Chat Message New Lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/im.message.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"DIALOG_ID\": \"{{$env.BITRIX_CHAT_ID}}\",\n  \"MESSAGE\": \"Входящий звонок\\n\\nКлиент: {{$('Parse Lead Data').first().json.clientName}}\\nТелефон: {{$('Parse Lead Data').first().json.phone}}\\nТип клиента: {{$('Parse Lead Data').first().json.clientType === 'COMPANY' ? 'Юридическое лицо' : 'Физическое лицо'}}\\nОтветственный: {{$('Decide Responsible').first().json.finalAssignedByName}}\\nСсылка: {{$env.BITRIX_PORTAL_URL}}/crm/lead/details/{{$('Duplicate Check').first().json.result.LEAD[0]}}/\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        96
+      ],
+      "id": "aab42a0d-6a57-496f-8a0a-269b604ece57",
+      "name": "Send Chat Message Existing",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/im.message.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"DIALOG_ID\": \"{{$env.BITRIX_B2C_MANAGER_ID}}\",\n  \"MESSAGE\": \"Новый лид\\n\\nКлиент: {{$('Parse Lead Data').first().json.clientName}}\\nТелефон: {{$('Parse Lead Data').first().json.phone}}\\nГород: {{$('Parse Lead Data').first().json.city}}\\nОтветственный: {{$env.BITRIX_B2C_MANAGER_NAME}}\\n\\nСсылка: {{$env.BITRIX_PORTAL_URL}}/crm/lead/details/{{$('Create Lead').first().json.result}}/\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1840,
+        496
+      ],
+      "id": "2d76f20d-7092-4e48-a9a0-0066537424f5",
+      "name": "Send Message B2C Manager",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BITRIX_WEBHOOK_BASE}}/im.message.add.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"DIALOG_ID\": \"{{$env.BITRIX_B2C_MANAGER_ID}}\",\n  \"MESSAGE\": \"Новый лид\\n\\nКлиент: {{$('Parse Lead Data').first().json.clientName}}\\nТелефон: {{$('Parse Lead Data').first().json.phone}}\\nГород: {{$('Parse Lead Data').first().json.city}}\\nОтветственный: {{$env.BITRIX_B2C_MANAGER_NAME}}\\n\\nСсылка: {{$env.BITRIX_PORTAL_URL}}/crm/lead/details/{{$('Duplicate Check').first().json.result.LEAD[0]}}/\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        -64
+      ],
+      "id": "9c1aade0-4d14-47a5-adb9-bac6da7bf70a",
+      "name": "Send Message B2C Manager1",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5868cb06-cf67-4d6d-858b-6ff91b2585fe",
+              "leftValue": "={{$('Parse Lead Data').first().json.clientType}}",
+              "rightValue": "PERSON",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "f8574704-7a4e-4eb5-9b2a-29be929b01bd",
+      "name": "IF Existing Is Person"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/save-transfer-info",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{$('Parse Lead Data').first().json.phone}}\",\n  \"clientType\": \"{{$('Parse Lead Data').first().json.clientType}}\",\n  \"assignedExt\": \"{{$('Route Responsible').first().json.assignedExt}}\",\n  \"secondaryExt\": \"{{$('Route Responsible').first().json.secondaryExt}}\",\n  \"fallbackExts\": \"{{$('Route Responsible').first().json.fallbackExts}}\",\n  \"createdAt\": \"{{new Date().toISOString()}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "31596452-9e7b-4558-a0c2-f099365a6342",
+      "name": "Save Transfer Existing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Parse Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Existing": {
+      "main": [
+        [
+          {
+            "node": "Build Timeline Comment1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "If Lead Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Timeline Comment": {
+      "main": [
+        [
+          {
+            "node": "IF Existing Is Person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Lead": {
+      "main": [
+        [
+          {
+            "node": "Update New Lead Responsible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Timeline Comment New Lead": {
+      "main": [
+        [
+          {
+            "node": "IF New Lead Is Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Lead Exists": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Timeline Comment": {
+      "main": [
+        [
+          {
+            "node": "Add Timeline Comment New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Timeline Comment1": {
+      "main": [
+        [
+          {
+            "node": "Add Timeline Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Responsible": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Route Responsible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Callback Task": {
+      "main": [
+        [
+          {
+            "node": "IF Existing Should Update Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row(s)": {
+      "main": [
+        []
+      ]
+    },
+    "Create Callback New Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Chat Message New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Lead": {
+      "main": [
+        [
+          {
+            "node": "Decide Responsible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Responsible": {
+      "main": [
+        [
+          {
+            "node": "Save Transfer Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Existing Should Update Queue": {
+      "main": [
+        [
+          {
+            "node": "Update row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF New Lead Is Company": {
+      "main": [
+        [
+          {
+            "node": "Create Callback New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Message Nadya",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update New Lead Responsible": {
+      "main": [
+        [
+          {
+            "node": "Build Timeline Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Chat Message New Lead": {
+      "main": [
+        [
+          {
+            "node": "Update row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Chat Message Existing": {
+      "main": [
+        [
+          {
+            "node": "Create Callback Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Existing Is Person": {
+      "main": [
+        [
+          {
+            "node": "Send Message Nadya1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Chat Message Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message Nadya1": {
+      "main": [
+        [
+          {
+            "node": "IF Existing Should Update Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Transfer Existing": {
+      "main": [
+        [
+          {
+            "node": "Update Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

@@ -1,0 +1,577 @@
+{
+  "name": "voice_dialog_city",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-dialog-city",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "608ed91b-08cd-49c5-8a7c-8b89da039e8d",
+      "name": "Webhook",
+      "webhookId": "fff629a8-488b-41c3-b8a2-300928bb9baa"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f717007-b084-4725-96d6-ea5f37d67508",
+              "name": "phone",
+              "value": "={{'+7' + $json.body.phone.replace(/\\D/g, '').slice(-10)}}",
+              "type": "string"
+            },
+            {
+              "id": "b267ac36-3cbd-484a-a5f7-b295455b4099",
+              "name": "userText",
+              "value": "={{$json.body.userText}}",
+              "type": "string"
+            },
+            {
+              "id": "bd43bb92-2b1b-49a1-afed-a653c865ecf9",
+              "name": "source",
+              "value": "={{$json.body.source || 'telephony_sip'}}",
+              "type": "string"
+            },
+            {
+              "id": "76559ac5-7c47-4b00-860b-774454a3fac1",
+              "name": "event",
+              "value": "={{$json.body.event || 'message'}}",
+              "type": "string"
+            },
+            {
+              "id": "1715973c-70bb-40a4-b5d8-592b0f25d92e",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "99314f69-c599-4d64-83a2-9e85c39b620d",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -288,
+        -32
+      ],
+      "id": "d80c7f45-9107-4e60-ab3a-1dc7279a99c1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/voice-bot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$('Get Final Dialog Row').first().json.phone}}"
+            },
+            {
+              "name": "clientName",
+              "value": "={{$('Get Final Dialog Row').first().json.clientName || 'Клиент'}}"
+            },
+            {
+              "name": "clientType",
+              "value": "={{$('Get Final Dialog Row').first().json.clientType || 'UNKNOWN'}}"
+            },
+            {
+              "name": "city",
+              "value": "={{$('Get Final Dialog Row').first().json.city || ''}}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{$('Get Final Dialog Row').first().json.transcriptFull || ''}}"
+            },
+            {
+              "name": "source",
+              "value": "telephony_sip"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "de2fe693-d10c-4bd7-80f1-8fce0b18f840",
+      "name": "Send To Lead Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$('Edit Fields').first().json.phone}}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        -32
+      ],
+      "id": "b2dc9c16-f906-41ba-9c0c-143a6c850ccc",
+      "name": "Get Dialog Row"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$('Edit Fields').first().json.phone}}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        512,
+        -32
+      ],
+      "id": "dada30b1-f226-428a-a3d4-d0cdaab4afdf",
+      "name": "Get Final Dialog Row"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = String($('Edit Fields').first().json.userText || '').toLowerCase().trim();\n\ntext = text\n  .replace(/[.,!?]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nlet city = 'UNKNOWN';\n\nif (\n  text.includes('city a') ||\n  text.includes('citya') ||\n  text.includes('citya') ||\n  text.includes('citya')\n) {\n  city = 'City A';\n} else if (\n  text.includes('city b') ||\n  text.includes('city b') ||\n  text.includes('city b')\n) {\n  city = 'City B';\n} else if (text.length >= 2) {\n  city = $('Edit Fields').first().json.userText.trim();\n}\n\nreturn [\n  {\n    json: {\n      phone: $('Edit Fields').first().json.phone,\n      city,\n      userText: $('Edit Fields').first().json.userText\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -32
+      ],
+      "id": "f3acc40b-cc17-48d6-bf35-5bc0cf3ab9dc",
+      "name": "Parse City"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$json.phone}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "city": "={{ $json.city }}",
+            "step": "done",
+            "attempts": "0",
+            "transcriptFull": "={{ ($('Get Dialog Row').first().json.transcriptFull || '') + '\\nКлиент: ' + $json.userText }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clientName",
+              "displayName": "clientName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "clientType",
+              "displayName": "clientType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "transcriptFull",
+              "displayName": "transcriptFull",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "attempts",
+              "displayName": "attempts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "e8eb73f4-a852-4cbb-a1e4-e3e79b2c9ab3",
+      "name": "Update Dialog After City"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"replyText\": \"__THANK_OK__\",\n  \"step\": \"done\",\n  \"isCompleted\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1408,
+        96
+      ],
+      "id": "09073236-9f0c-48a8-ac6c-218cbf149105",
+      "name": "Respond Finish Dialog"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b1e998c9-58f4-46d0-92f5-a77156b470da",
+              "leftValue": "={{$json.shouldReject}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        -32
+      ],
+      "id": "dfcca6ec-510c-44f8-a3c3-db931410225d",
+      "name": "IF Person Not Allowed City"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"replyText\": \"__THANK_NOT_OK__\",\n  \"step\": \"done\",\n  \"isCompleted\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1408,
+        -48
+      ],
+      "id": "22111ac1-f26f-4c50-bdfd-e91fdff82a3a",
+      "name": "Respond Not Service Area"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/voice-bot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$('Get Final Dialog Row').first().json.phone}}"
+            },
+            {
+              "name": "clientName",
+              "value": "={{$('Get Final Dialog Row').first().json.clientName || 'Клиент'}}"
+            },
+            {
+              "name": "clientType",
+              "value": "={{$('Get Final Dialog Row').first().json.clientType || 'UNKNOWN'}}"
+            },
+            {
+              "name": "city",
+              "value": "={{$('Get Final Dialog Row').first().json.city || ''}}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{$('Get Final Dialog Row').first().json.transcriptFull || ''}}"
+            },
+            {
+              "name": "source",
+              "value": "telephony_sip"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1184,
+        -48
+      ],
+      "id": "54eb51fe-bf34-40fa-9fee-25dec889017c",
+      "name": "Send To Lead Workflow1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Get Final Dialog Row').first().json;\n\nconst clientType = String(row.clientType || '').toUpperCase();\nconst city = String(row.city || '').toLowerCase().trim();\n\nconst isAllowedCity =\n  city.includes('city a') ||\n  city.includes('city b');\n\nconst shouldReject =\n  clientType === 'PERSON' &&\n  !isAllowedCity;\n\nreturn [\n  {\n    json: {\n      ...row,\n      clientType,\n      city: row.city || 'UNKNOWN',\n      isAllowedCity,\n      shouldReject\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -32
+      ],
+      "id": "1eddae39-dd2c-4344-9be9-a1a37337ebe4",
+      "name": "Check Service Area"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Dialog Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To Lead Workflow": {
+      "main": [
+        [
+          {
+            "node": "Respond Finish Dialog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Dialog Row": {
+      "main": [
+        [
+          {
+            "node": "Parse City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Final Dialog Row": {
+      "main": [
+        [
+          {
+            "node": "Check Service Area",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse City": {
+      "main": [
+        [
+          {
+            "node": "Update Dialog After City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Dialog After City": {
+      "main": [
+        [
+          {
+            "node": "Get Final Dialog Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Person Not Allowed City": {
+      "main": [
+        [
+          {
+            "node": "Send To Lead Workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send To Lead Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To Lead Workflow1": {
+      "main": [
+        [
+          {
+            "node": "Respond Not Service Area",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Service Area": {
+      "main": [
+        [
+          {
+            "node": "IF Person Not Allowed City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

@@ -1,0 +1,8 @@
+{
+  "phone": "+15551234567",
+  "clientName": "Demo Client",
+  "clientType": "COMPANY",
+  "city": "City A",
+  "transcript": "Hello, I am calling about a service request.",
+  "source": "telephony_sip"
+}

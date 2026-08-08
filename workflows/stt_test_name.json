@@ -1,0 +1,381 @@
+{
+  "name": "stt_test_name",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stt-test-name",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9048b8d8-e416-4240-90b4-bcbd3063ed95",
+      "name": "Webhook",
+      "webhookId": "1373b202-1f10-4ebf-88a0-7866663ac7d0"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cbaff0cd-07b4-4139-8b90-968715dd75ac",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "67f6b737-84d0-4ab0-8637-8d01d5e3a1cf",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            },
+            {
+              "id": "343cd158-a49d-4b8b-8c7b-436c89073387",
+              "name": "lang",
+              "value": "ru-RU",
+              "type": "string"
+            },
+            {
+              "id": "04ee2ba8-0a6b-42d7-a638-38f48ea79735",
+              "name": "topic",
+              "value": "general",
+              "type": "string"
+            },
+            {
+              "id": "6bb32519-61e3-4d1e-b40b-ad32a5c159fd",
+              "name": "format",
+              "value": "lpcm",
+              "type": "string"
+            },
+            {
+              "id": "309cab37-5a49-4d88-b2c5-c9d832228724",
+              "name": "sampleRateHertz",
+              "value": "8000",
+              "type": "string"
+            },
+            {
+              "id": "401d0c82-a5af-4fba-b6fe-5f7366c940a5",
+              "name": "=phone",
+              "value": "{{$json.body.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "0b821268-3161-451e-86d8-2467660aff6a",
+              "name": "source",
+              "value": "telephony_sip",
+              "type": "string"
+            },
+            {
+              "id": "f4310702-9eb8-4bc0-91d0-06c3beb62300",
+              "name": "event",
+              "value": "message",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "915ebcac-f297-4735-a232-2464049e5d33",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "6cfb3679-c6f5-4cd0-9644-8baeb01a7d95",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.replyText}}"
+            },
+            {
+              "name": "lang",
+              "value": "ru-RU"
+            },
+            {
+              "name": "voice",
+              "value": "jane"
+            },
+            {
+              "name": "format",
+              "value": "lpcm"
+            },
+            {
+              "name": "sampleRateHertz",
+              "value": "8000"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1296,
+        0
+      ],
+      "id": "76fcd6af-07cb-41a9-ba15-a860bb6ab809",
+      "name": "Yandex TTS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://stt.api.cloud.yandex.net/speech/v1/stt:recognize",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "lang",
+              "value": "={{$('Edit Fields').first().json.lang}}"
+            },
+            {
+              "name": "topic",
+              "value": "={{$('Edit Fields').first().json.topic}}"
+            },
+            {
+              "name": "format",
+              "value": "={{$('Edit Fields').first().json.format}}"
+            },
+            {
+              "name": "sampleRateHertz",
+              "value": "={{$('Edit Fields').first().json.sampleRateHertz}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "audio/x-pcm"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        432,
+        0
+      ],
+      "id": "f91e9741-96d5-4a17-b9ec-363d97757d06",
+      "name": "Yandex STT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook').first().json.body || {};\nconst rawPhone = body.phone || '';\nconst digits = String(rawPhone).replace(/\\D/g, '');\nconst phone = digits ? '+7' + digits.slice(-10) : '';\n\nif (!phone) {\n  throw new Error('Не пришёл phone из Asterisk. body=' + JSON.stringify(body));\n}\n\nreturn [\n  {\n    json: {\n      phone,\n      userText: $json.result || $json.text || '',\n      source: 'telephony_sip',\n      event: 'message',\n      raw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "85b14266-8aa0-457e-bcbb-45dee391383a",
+      "name": "Parse STT Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      phone: $json.phone || '',\n      replyText: $json.replyText || 'Извините, я не расслышала. Повторите, пожалуйста.',\n      isCompleted: $json.isCompleted ?? false,\n      userText: $('Parse STT Result').first().json.userText || '',\n      raw: $json\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "4a4ad695-3cfa-4670-9419-975dd6098737",
+      "name": "Parse Gateway Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/voice-dialog-name",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{$('Parse STT Result').first().json.phone}}"
+            },
+            {
+              "name": "userText",
+              "value": "={{$('Parse STT Result').first().json.userText}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$('Parse STT Result').first().json.source}}"
+            },
+            {
+              "name": "event",
+              "value": "={{$('Parse STT Result').first().json.event}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        0
+      ],
+      "id": "c1ba5d11-ad0e-4abf-b6d5-3b274dc40d21",
+      "name": "Send To Voice Name"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Yandex STT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yandex TTS": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yandex STT": {
+      "main": [
+        [
+          {
+            "node": "Parse STT Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse STT Result": {
+      "main": [
+        [
+          {
+            "node": "Send To Voice Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gateway Response": {
+      "main": [
+        [
+          {
+            "node": "Yandex TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To Voice Name": {
+      "main": [
+        [
+          {
+            "node": "Parse Gateway Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

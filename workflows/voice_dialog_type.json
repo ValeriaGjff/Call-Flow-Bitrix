@@ -1,0 +1,351 @@
+{
+  "name": "voice_dialog_type",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-dialog-type",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1040,
+        64
+      ],
+      "id": "79789fbd-cf66-48bc-9ccf-6469c068bea0",
+      "name": "Webhook",
+      "webhookId": "760d565a-8c9b-466c-aadf-a785195e77c3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f717007-b084-4725-96d6-ea5f37d67508",
+              "name": "phone",
+              "value": "={{'+7' + $json.body.phone.replace(/\\D/g, '').slice(-10)}}",
+              "type": "string"
+            },
+            {
+              "id": "b267ac36-3cbd-484a-a5f7-b295455b4099",
+              "name": "userText",
+              "value": "={{$json.body.userText || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "bd43bb92-2b1b-49a1-afed-a653c865ecf9",
+              "name": "source",
+              "value": "={{$json.body.source || 'telephony_sip'}}",
+              "type": "string"
+            },
+            {
+              "id": "76559ac5-7c47-4b00-860b-774454a3fac1",
+              "name": "event",
+              "value": "={{$json.body.event || 'message'}}",
+              "type": "string"
+            },
+            {
+              "id": "1715973c-70bb-40a4-b5d8-592b0f25d92e",
+              "name": "ID_CAT",
+              "value": "={{$env.YANDEX_FOLDER_ID}}",
+              "type": "string"
+            },
+            {
+              "id": "99314f69-c599-4d64-83a2-9e85c39b620d",
+              "name": "API",
+              "value": "={{$env.YANDEX_API_KEY}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        64
+      ],
+      "id": "220e7ed3-b931-432c-be35-541bedf18762",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Api-Key {{$('Edit Fields').first().json.API}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"modelUri\": \"gpt://{{$('Edit Fields').first().json.ID_CAT}}/yandexgpt-lite\",\n  \"completionOptions\": {\n    \"stream\": false,\n    \"temperature\": 0,\n    \"maxTokens\": 100\n  },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"text\": \"Определи тип клиента из текста. Верни только валидный JSON: {\\\"clientType\\\":\\\"PERSON|COMPANY|UNKNOWN\\\"}. Если клиент говорит физическое лицо, физик, частное лицо — верни PERSON. Если говорит юридическое лицо, юр лицо, компания, организация, ООО, ИП — верни COMPANY. Если не понятно — UNKNOWN.\"\n    },\n    {\n      \"role\": \"user\",\n      \"text\": \"Ответ клиента: {{$('Edit Fields').first().json.userText}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -464,
+        64
+      ],
+      "id": "86beddef-ebf7-47d1-930c-748ea7f3a9ec",
+      "name": "Extract Client Type"
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.result?.alternatives?.[0]?.message?.text || '';\nraw = raw.trim();\n\nlet clientType = 'UNKNOWN';\n\ntry {\n  raw = raw\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```/, '')\n    .replace(/```$/i, '')\n    .trim();\n\n  const start = raw.indexOf('{');\n  const end = raw.lastIndexOf('}');\n\n  if (start !== -1 && end !== -1) {\n    const parsed = JSON.parse(raw.slice(start, end + 1));\n    clientType = parsed.clientType || 'UNKNOWN';\n  }\n} catch (e) {\n  clientType = 'UNKNOWN';\n}\n\nconst text = String($('Edit Fields').first().json.userText || '').toLowerCase();\n\nif (text.includes('физ')) clientType = 'PERSON';\nif (text.includes('юр') || text.includes('компан') || text.includes('организац') || text.includes('ооо') || text.includes('ип')) {\n  clientType = 'COMPANY';\n}\n\nreturn [\n  {\n    json: {\n      phone: $('Edit Fields').first().json.phone,\n      clientType,\n      userText: $('Edit Fields').first().json.userText\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        64
+      ],
+      "id": "fece0ace-3238-4988-95c3-dc6888230612",
+      "name": "Parse Client Type"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{$('Edit Fields').first().json.phone}}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        64
+      ],
+      "id": "0f9c03ab-dc15-4cfe-a93e-ea607e7aad5b",
+      "name": "Get Dialog Row"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "voice_dialog_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "clientType": "={{$json.clientType}}",
+            "step": "waiting_city",
+            "attempts": "0",
+            "transcriptFull": "={{ ($('Get Dialog Row').first().json.transcriptFull || '') + '\\nКлиент: ' + $json.userText + '\\nРобот: Подскажите, пожалуйста, из какого вы города?' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clientName",
+              "displayName": "clientName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "clientType",
+              "displayName": "clientType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "transcriptFull",
+              "displayName": "transcriptFull",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "attempts",
+              "displayName": "attempts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        64
+      ],
+      "id": "cbeac997-cfd0-4953-ab3e-e4784f3bd4e3",
+      "name": "Update Dialog After Type"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"replyText\": \"Подскажите, пожалуйста, из какого вы города?\",\n  \"step\": \"waiting_city\",\n  \"isCompleted\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        128,
+        64
+      ],
+      "id": "d96e9b08-c8c4-4c6e-aae9-44691054c8d9",
+      "name": "Respond Ask City"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Dialog Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Client Type": {
+      "main": [
+        [
+          {
+            "node": "Parse Client Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Client Type": {
+      "main": [
+        [
+          {
+            "node": "Update Dialog After Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Dialog Row": {
+      "main": [
+        [
+          {
+            "node": "Extract Client Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Dialog After Type": {
+      "main": [
+        [
+          {
+            "node": "Respond Ask City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
