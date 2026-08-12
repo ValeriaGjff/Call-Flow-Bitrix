@@ -40,7 +40,7 @@ flowchart TD
 
    G --> H[Lead Processor]
 
-   H --> [Phone number normalization]
+   H --> I[Phone number normalization]
    I --> J[Searching for a client in CRM]
 
    J --> K{Has the client been found?}
