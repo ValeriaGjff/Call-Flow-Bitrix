@@ -64,6 +64,13 @@ flowchart TD
    T --> U[Transferring the call to the manager]
 ```
 
+## Workflow demonstration
+
+### The main workflow for lead processing
+
+This is where the received information is processed, an existing client is searched for, the responsible person is identified, and the CRM is updated.
+![Lead processor workflow](docs/images/lead-processor.png)
+
 ## Quick start
 
 1. Clone the repository.
