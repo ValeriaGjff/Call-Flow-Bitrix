@@ -1,42 +1,67 @@
 # Call Flow Bitrix
 
-Implementation of an event-driven inbound call routing system built with n8n, telephony webhooks, speech-to-text/text-to-speech, an LLM classifier, and Bitrix24 REST API.
+A system for automatic processing and routing of incoming calls with telephony integration, n8n and Bitrix24.
 
-> This repository contains a sanitized demonstration implementation based on real-world engineering problems. It contains no proprietary source code history, production credentials, customer data, production domains, employee identities, or internal company identifiers.
+The project automates the entire process of handling an incoming call: from receiving the call and speech recognition to determining the client type, searching for the client in the CRM, selecting the responsible manager, and transferring the data for call transfer.
 
-## What it demonstrates
+## Task
+### When there is a large number of incoming calls, manual routing creates several problems:
 
-- inbound voice dialog orchestration;
-- STT/TTS integration with Yandex Cloud;
-- extraction of caller name, client type and city;
-- B2B/B2C routing;
-- preservation of an existing active CRM owner;
-- reassignment when the existing owner is inactive/unknown;
-- duplicate lead lookup;
-- lead creation/update;
-- callback task creation;
-- CRM timeline comments and chat notifications;
-- transfer target persistence via n8n Data Tables.
+- the operator needs to determine who is calling;
+- to understand whether the client is an individual or a legal entity;
+- check whether the client exists in the CRM;
+- determine the current responsible person;
+- transfer the call.
+
+The goal of the project is to automate this process and reduce the manual actions performed by employees.
+
+## The system’s actions
+
+- accepts an event from telephony;
+- starts a voice dialogue;
+- converts the client’s speech into text using Speech-to-Text;
+- determines: client name, client type, city;
+- searches for an existing client or lead in the CRM;
+- checks the current responsible person;
+- saves the selected internal manager number;
+- creates the CRM events, tasks and messages.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Incoming call / PBX] --> B[STT]
-    B --> C[Voice dialog]
-    C --> D{Name / type / city}
-    D --> E[Lead processor]
-    E --> F[Duplicate lookup]
-    F --> G{Existing lead?}
-    G -- No --> H[Choose route]
-    G -- Yes --> I{Active owner?}
-    I -- Yes --> J[Keep current owner]
-    I -- No --> H
-    H --> K[Create/update CRM lead]
-    J --> K
-    K --> L[Create callback task]
-    K --> M[Save transfer target]
-    M --> N[PBX reads target]
+   A[Incoming call] --> B[Telephony]
+   B --> C[Voice Dialog]
+   C --> D[Speech-to-Text]
+
+   D --> E[Definition of a name]
+   E --> F[Determining the client type]
+   F --> G[Definition of a city]
+
+   G --> H[Lead Processor]
+
+   H --> [Phone number normalization]
+   I --> J[Searching for a client in CRM]
+
+   J --> K{Has the client been found?}
+
+   K -- Yes --> L{Is the responsible person active?}
+   K -- No --> M[Choosing a new responsible person]
+
+   L -- Yes --> N[Keep the current responsible person]
+   L -- No --> M
+
+   M --> O[Routing Policy]
+   O --> P[Main manager]
+   O --> Q[Reserve manager]
+
+   N --> R[Creation / lead update]
+   P --> R
+   Q --> R
+
+   R --> S[Saving transfer info]
+   S --> T[PBX get extension]
+   T --> U[Transferring the call to the manager]
 ```
 
 ## Quick start
@@ -86,7 +111,6 @@ crm-call-router/
 ├── .env.example
 ├── .gitignore
 ├── docker-compose.yml
-├── SECURITY.md
 └── README.md
 ```
 
