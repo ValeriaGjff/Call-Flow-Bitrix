@@ -1,4 +1,4 @@
-# CRM Call Router
+# Call Flow Bitrix
 
 Implementation of an event-driven inbound call routing system built with n8n, telephony webhooks, speech-to-text/text-to-speech, an LLM classifier, and Bitrix24 REST API.
 
