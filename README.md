@@ -113,7 +113,3 @@ python3 scripts/secret_scan.py
 before every public push.
 
 See `SECURITY.md`.
-
-## License
-
-This repository is intended as a portfolio/reference implementation. Choose and add a software license only if you have verified that every included component is yours to redistribute.
