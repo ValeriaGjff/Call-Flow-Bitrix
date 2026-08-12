@@ -1,8 +1,8 @@
 # CRM Call Router
 
-Portfolio-safe reference implementation of an event-driven inbound call routing system built with n8n, telephony webhooks, speech-to-text/text-to-speech, an LLM classifier, and Bitrix24 REST API.
+Шmplementation of an event-driven inbound call routing system built with n8n, telephony webhooks, speech-to-text/text-to-speech, an LLM classifier, and Bitrix24 REST API.
 
-> **Portfolio edition.** This repository contains a sanitized demonstration implementation based on real-world engineering problems. It contains no proprietary source code history, production credentials, customer data, production domains, employee identities, or internal company identifiers.
+> This repository contains a sanitized demonstration implementation based on real-world engineering problems. It contains no proprietary source code history, production credentials, customer data, production domains, employee identities, or internal company identifiers.
 
 ## What it demonstrates
 
