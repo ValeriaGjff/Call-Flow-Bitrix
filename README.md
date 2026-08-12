@@ -71,6 +71,13 @@ flowchart TD
 This is where the received information is processed, an existing client is searched for, the responsible person is identified, and the CRM is updated.
 ![Lead processor workflow](docs/images/lead-processor.png)
 
+### Workflows for dialogue processing
+
+Separate workflows are responsible for recognizing the name, customer type, and city.
+![Lead processor workflow](docs/images/voice_dialog_name.png)
+![Lead processor workflow](docs/images/voice_dialog_type.png)
+![Lead processor workflow](docs/images/voice_dialog_city.png)
+
 ## Quick start
 
 1. Clone the repository.
