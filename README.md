@@ -128,14 +128,3 @@ crm-call-router/
 └── README.md
 ```
 
-## Demo routing policy
-
-The public version intentionally uses synthetic managers (`Manager A`, `Manager B`, etc.) and a deterministic demo duty rotation. Replace it with your own schedule, database lookup or workforce-management API.
-
-The routing behavior retained from the implementation is:
-
-- a new B2B lead is assigned according to the routing policy;
-- B2C leads are assigned to a configured B2C manager;
-- an existing lead owned by an active manager keeps that manager;
-- an existing lead with an inactive/unknown owner is reassigned;
-- transfer extensions are stored for the PBX to retrieve.
