@@ -2,7 +2,21 @@
 
 A system for automatic processing and routing of incoming calls with telephony integration, n8n and Bitrix24.
 
-The project automates the entire process of handling an incoming call: from receiving the call and speech recognition to determining the client type, searching for the client in the CRM, selecting the responsible manager, and transferring the data for call transfer.
+The solution automatically processes the incoming call: it recognizes the client’s speech, determines their name, segment, and city, checks existing cases in the CRM, selects the responsible manager, and returns the telephony route for call transfer.
+
+## Problem
+Handling an incoming call requires more than simply answering it. The system also needs to determine who should receive the call.
+
+Without automation, an employee has to manually:
+
+identify the caller;
+- determine whether the client is B2B or B2C;
+- search for the client in the CRM;
+- check whether an account manager is already assigned;
+- select a manager for a new client;
+- transfer the call;
+- create or update the CRM record;
+- handle interrupted or incomplete calls.
 
 ## Task
 ### When there is a large number of incoming calls, manual routing creates several problems:
@@ -13,18 +27,20 @@ The project automates the entire process of handling an incoming call: from rece
 - determine the current responsible person;
 - transfer the call.
 
-The goal of the project is to automate this process and reduce the manual actions performed by employees.
+The goal of the project was to automate this process and connect telephony and CRM into a single routing system.
 
-## The system’s actions
+## Key Features
 
-- accepts an event from telephony;
-- starts a voice dialogue;
-- converts the client’s speech into text using Speech-to-Text;
-- determines: client name, client type, city;
-- searches for an existing client or lead in the CRM;
-- checks the current responsible person;
-- saves the selected internal manager number;
-- creates the CRM events, tasks and messages.
+- Speech-to-Text processing for incoming calls;
+- AI-based extraction of caller name, client type, and city;
+- existing client lookup in Bitrix24;
+- preservation of the current account manager for repeat calls;
+- automatic routing of new B2B and B2C clients;
+- primary, secondary, and fallback routing;
+- lead creation and update.
+
+## Result
+The system makes routing decisions automatically based on caller data and CRM state. Repeat callers remain assigned to their existing manager, while new clients are routed according to a configurable distribution policy.
 
 ## Architecture
 
@@ -34,9 +50,9 @@ flowchart TD
    B --> C[Voice Dialog]
    C --> D[Speech-to-Text]
 
-   D --> E[Definition of a name]
-   E --> F[Determining the client type]
-   F --> G[Definition of a city]
+   D --> E[Extract Name]
+   E --> F[Detect Client Type]
+   F --> G[Detect City]
 
    G --> H[Lead Processor]
 
@@ -66,28 +82,113 @@ flowchart TD
 
 ## Workflow demonstration
 
+The solution is split into several independent n8n workflows. Each workflow has a narrow responsibility, while together they form a complete call-processing pipeline.
+
 ### The main workflow for lead processing
 
-This is where the received information is processed, an existing client is searched for, the responsible person is identified, and the CRM is updated.
+The central workflow responsible for CRM processing and routing decisions.
+
 ![Lead processor workflow](docs/images/lead-processor.png)
 
-### Workflows for dialogue processing
+The lead_processor performs the main business logic:
 
-Separate workflows are responsible for recognizing the name, customer type, and city.
+- normalizes the phone number;
+- searches for existing CRM records;
+- detects duplicates;
+- checks the current responsible manager;
+- determines whether the current assignment should be preserved;
+- selects a manager for a new client;
+- creates or updates the Bitrix24 lead;
+- creates CRM tasks when required;
+- stores routing information for the telephony system.
+
+For B2B clients, the routing logic can take a duty schedule into account and select primary and secondary managers according to the current routing turn. For repeat calls, the workflow can preserve the existing responsible manager instead of assigning the client again.
+
+### voice_dialog_name
+
+Handles the caller name collection stage. The workflow receives the caller's recognized text, extracts a structured client name using LLM processing, and stores the result in the shared dialog state.
+
 ![Lead processor workflow](docs/images/voice_dialog_name.png)
+
+### voice_dialog_type
+
+Determines the caller segment.
+The workflow analyzes the caller's response and classifies the client as: B2B, B2C, Unknown/
+
 ![Lead processor workflow](docs/images/voice_dialog_type.png)
+
+### voice_dialog_city
+
+Collects and normalizes the caller's city. After the city is extracted, the workflow updates the dialog state and performs additional service-area validation.
+
 ![Lead processor workflow](docs/images/voice_dialog_city.png)
 
-## Quick start
+### voice_dialog_reset
+
+Clears the stored dialog state for a phone number.
+
+![Lead processor workflow](docs/images/voice_dialog_reset.png)
+
+### stt_test_name
+
+Acts as the speech-processing gateway for the name stage. It accepts incoming audio, sends the audio to Speech-to-Text, parses the recognition result, and forwards the recognized text to voice_dialog_name.
+
+![Lead processor workflow](docs/images/stt_test_name.png)
+
+### stt_test_type
+
+Performs the same gateway role for the client-type stage.
+
+![Lead processor workflow](docs/images/stt_test_type.png)
+
+### stt_test_city
+
+Handles audio processing for the city.
+
+![Lead processor workflow](docs/images/stt_test_city.png)
+
+### save_transfer_info
+
+Stores the final routing decision calculated by lead_processor. The information is persisted in an n8n Data Table so the telephony system does not need to execute the entire CRM workflow again when it is ready to perform the transfer.
+
+![Lead processor workflow](docs/images/save_transfer_info.png)
+
+### get_transfer_info
+
+Provides the routing result back to the telephony system. The workflow receives a phone number from the PBX, normalizes it, reads the previously calculated route from the Data Table, and returns the transfer information.
+
+![Lead processor workflow](docs/images/get_transfer_info.png)
+
+## Overall Flow
+
+Together, the workflows form one processing chain. 
+The architecture deliberately separates three different responsibilities:
+
+Speech layer. Handles audio, Speech-to-Text, Text-to-Speech, and communication with the telephony platform.
+
+Dialog layer. Collects and structures caller information while maintaining conversation state between individual dialog stages.
+
+Business layer. Works with Bitrix24, checks existing clients, applies routing rules, assigns responsible managers, updates CRM records, and calculates the final call destination.
+
+This separation keeps telephony-specific processing independent from CRM business logic. As a result, individual parts of the system can be tested, modified, or replaced without rebuilding the entire call-routing process.
+
+## Installation
 
 1. Clone the repository.
-2. Copy environment template:
+
+```bash
+git clone git@github.com:ValeriaGjff/Call-Flow-Bitrix.git
+cd Call-Flow-Bitrix
+```
+
+2. Create .env
 
 ```bash
 cp .env.example .env
 ```
 
 3. Fill in your own credentials and public URLs.
+
 4. Start n8n:
 
 ```bash
@@ -95,36 +196,9 @@ docker compose up -d
 ```
 
 5. Open n8n and import JSON files from `workflows/`.
+
 6. Create the required n8n Data Tables using `docs/data-tables.md`.
+
 7. In imported Data Table nodes, select the tables you created.
+
 8. Configure your PBX/telephony provider to call the documented webhooks.
-
-## Important configuration
-
-The exported workflows intentionally contain placeholders such as:
-
-```text
-REPLACE_WITH_VOICE_DIALOG_STATE_TABLE_ID
-REPLACE_WITH_TRANSFER_TARGETS_TABLE_ID
-REPLACE_WITH_LEAD_DUTY_QUEUE_TABLE_ID
-```
-
-After importing the workflows, open each Data Table node and select the appropriate table in your own n8n instance.
-
-CRM and cloud secrets are read from environment variables rather than stored in workflow JSON.
-
-## Repository layout
-
-```text
-crm-call-router/
-├── workflows/          Sanitized n8n workflow exports
-├── config/             Example routing configuration
-├── examples/           Synthetic webhook payloads
-├── docs/               Architecture and deployment notes
-├── scripts/            Local security scan
-├── .env.example
-├── .gitignore
-├── docker-compose.yml
-└── README.md
-```
-
