@@ -184,7 +184,7 @@ cd Call-Flow-Bitrix
 2. Create .env
 
 ```bash
-cp .env.example .env
+cp .env .env
 ```
 
 3. Fill in your own credentials and public URLs.
